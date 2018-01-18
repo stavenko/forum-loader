@@ -1,0 +1,17 @@
+{
+  "name": "forum-loader",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Vasiliy G. Stavenko",
+  "license": "ISC",
+  "dependencies": {
+    "jsdom": "^11.5.1",
+    "jssoup": "0.0.6",
+    "node-fetch": "^1.7.3",
+    "url-parse": "^1.2.0"
+  }
+}
