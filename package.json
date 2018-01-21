@@ -11,7 +11,9 @@
   "dependencies": {
     "jsdom": "^11.5.1",
     "jssoup": "0.0.6",
+    "mkdirp": "^0.5.1",
     "node-fetch": "^1.7.3",
+    "optparse": "^1.0.5",
     "url-parse": "^1.2.0"
   }
 }

@@ -2,6 +2,13 @@ const fs = require('fs');
 const fetch = require('node-fetch');
 const URL = require('url');
 const jsdom = require('jsdom').JSDOM;
+const optparse = require('optparse');
+const euristics = require('./euristics.js');
+const sys = require('sys');
+const path = require('path');
+const mkdirp = require('mkdirp');
+
+
 const rootUrl = 'https://bitcointalk.org/';
 const BOARDS_ON_PAGE = 40;
 const TOPICS_ON_PAGE = 20;
@@ -136,15 +143,26 @@ function getAllMessagesFromTopicPage(topicPage) {
 
 }
 
-function getTopicSavier(queue) {
+function getTopicSavier(queue, filename) {
   return topic => {
-    queue.push({filename: './topics.txt', message: `${topic.trim()}\n\n`});
+    queue.push({filename, message: processEuristics(topic, euristics.topic)});
   }
 }
 
-function getMessagesSavier(queue) {
+function processEuristics(message, euristics) {
+    
+  euristics.modification.forEach(eur => {
+    message = eur(message);
+  });
+
+  return message;
+}
+function getMessagesSavier(queue, filename) {
+  const eurs = euristics.message
   return messages => {
-    queue.push(...messages.map(m => ({filename: './messages.txt', message: `${m.trim().replace(/\n\n/g,'\n')}\n\n`})));
+    queue.push(...messages
+      .filter(m => eurs.filter.every(eur => eur(m)))
+      .map(m => ({filename, message: processEuristics(m, eurs)}))); 
   }
 
 }
@@ -154,12 +172,22 @@ function retrieveTotalTopicPages(topicPage) {
 }
 
 async function saveToFile(file, content) {
+  await ensureFolder(file);
   const isExists = await exists(file);
   const flag = isExists ? 'a' : 'w';
   return new Promise((resolve, reject) => {
     fs.writeFile(file, content, {flag:'a'}, error => {
       if (error) reject(error);
       resolve();
+    })
+  });
+}
+
+async function ensureFolder(f) {
+  return new Promise((res, rej) => {
+    mkdirp(path.dirname(f), err => {
+      if (err) rej(err);
+      else res();
     })
   });
 }
@@ -173,17 +201,59 @@ async function exists(file) {
   })
 }
 
+function parseOptions() {
+  const switches = [
+      ['-h', '--help', 'Shows help sections'],
+      ['-o', '--output PATH', 'File to save']
+  ];
+
+  const options = {
+    output: './'
+  };
+  // Create a new OptionParser.
+  const parser = new optparse.OptionParser(switches);
+  parser.on('help', () => {
+    options.help = true;
+  });
+  parser.on('output', (f,v) => {
+    options[f] = v;
+
+  })
+
+  console.log(process.argv);
+
+  parser.parse(process.argv);
+
+  return options;
+
+
+}
+
+function printHelp() {
+  console.log('Download forum bitcointalk.com, options: ');
+  console.log('-h, --help', 'print this mesage');
+  console.log('-o, --output', 'folder to save topics, default: ./');
+
+}
+
 const messagesQueue = [];
 let mustI = null;
 
 async function main() {
+  const options = parseOptions();
+  console.log('options', options);
+  if (options.help) {
+    printHelp();
+    return;
+  }
+
   launchSavior(messagesQueue);
 
   try {
     const boards = await getAllBoards(rootUrl);
 
     console.log('boards found', boards.length);
-    await recursiveBoards(boards);
+    await recursiveBoards(boards, options);
 
   }
   catch (e) {
@@ -192,27 +262,34 @@ async function main() {
   stopSavior();
 }
 
-async function recursiveBoards(boards) {
+async function recursiveBoards(boards, options) {
   const retriveBoard = async i => {
     if (boards[i]) {
-      console.log(`Processing board #${i+1}/${boards.length}: ${boards[i].boardName}`);
+      const boardName = boards[i].boardName;
+      console.log(`Processing board #${i+1}/${boards.length}: ${boardName}`);
       const topics = await getAllTopics(boards[i]);
-      await recursiveTopics(topics);
+      await recursiveTopics(topics, boardName, options);
       await retriveBoard(i + 1);
     }
   }
   return await retriveBoard(0);
 }
 
-async function recursiveTopics(topics) {
+async function recursiveTopics(topics, boardName, options) {
   const retriveTopics = async i => {
     if(topics[i]) {
       console.log(`\tProcessing board #${i+1}/${topics.length}: ${topics[i].topic}`);
-      await retrieveAllMessages(topics[i], getMessagesSavier(messagesQueue), getTopicSavier(messagesQueue));
+      const messageFilename = fileName(options, 'messages', boardName, 'txt');
+      const topicFilename = fileName(options, 'topics', boardName, 'txt')
+      await retrieveAllMessages(topics[i], getMessagesSavier(messagesQueue, messageFilename), getTopicSavier(messagesQueue, topicFilename));
       await retriveTopics(i + 1);
     }
   }
   return await retriveTopics(0);
+}
+
+function fileName(options, where, name, ext) {
+  return path.join(options.output, where, name) + '.' + ext;
 }
 
 function launchSavior(messagesQueue) {
