@@ -26,7 +26,9 @@ async function getAllBoards(forumRoot) {
   const forumGroups = [...content.querySelectorAll('div#bodyarea>div.tborder>table')];
   const boards = [];
   for (let c = 0; c < forumGroups.length - 1; ++c) {
-    boards.push(...retrieveBoardsFromGroups(forumGroups[c]));
+    const bbs = retrieveBoardsFromGroups(forumGroups[c])
+    console.log('--->', bbs.length);
+    boards.push(...bbs);
   }
   return boards;
 }
@@ -221,7 +223,6 @@ function parseOptions() {
 
   })
 
-  console.log(parser);
 
   parser.parse(process.argv);
 
@@ -241,7 +242,6 @@ let mustI = null;
 
 async function main() {
   const options = parseOptions();
-  console.log('options', options);
   if (options.help) {
     printHelp();
     return;
@@ -279,7 +279,7 @@ async function recursiveBoards(boards, options) {
 async function recursiveTopics(topics, boardName, options) {
   const retriveTopics = async i => {
     if(topics[i]) {
-      console.log(`\tProcessing board #${i+1}/${topics.length}: ${topics[i].topic}`);
+      console.log(`\tProcessing topic #${i+1}/${topics.length}: ${topics[i].topic}`);
       const messageFilename = fileName(options, 'messages', boardName, 'txt');
       const topicFilename = fileName(options, 'topics', boardName, 'txt')
       await retrieveAllMessages(topics[i], getMessagesSavier(messagesQueue, messageFilename), getTopicSavier(messagesQueue, topicFilename));
