@@ -204,6 +204,7 @@ async function exists(file) {
 function parseOptions() {
   const switches = [
       ['-h', '--help', 'Shows help sections'],
+      ['-b', '--beginFromBoard NUMBER', 'Start parsing and saving from board number'],
       ['-o', '--output PATH', 'File to save']
   ];
 
@@ -215,18 +216,15 @@ function parseOptions() {
   parser.on('help', () => {
     options.help = true;
   });
-  parser.on('output', (f,v) => {
+  parser.on('*', (f,v) => {
     options[f] = v;
 
   })
 
-  console.log(process.argv);
 
   parser.parse(process.argv);
 
   return options;
-
-
 }
 
 function printHelp() {
@@ -272,7 +270,8 @@ async function recursiveBoards(boards, options) {
       await retriveBoard(i + 1);
     }
   }
-  return await retriveBoard(0);
+  const startWith = options.beginFromBoard-1 || 0;
+  return await retriveBoard(Math.max(0, startWith));
 }
 
 async function recursiveTopics(topics, boardName, options) {
