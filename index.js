@@ -221,6 +221,7 @@ function parseOptions() {
 
   })
 
+  console.log(parser);
 
   parser.parse(process.argv);
 
@@ -231,6 +232,7 @@ function printHelp() {
   console.log('Download forum bitcointalk.com, options: ');
   console.log('-h, --help', 'print this mesage');
   console.log('-o, --output', 'folder to save topics, default: ./');
+  console.log('-b', '--beginFromBoard NUMBER', 'Start parsing and saving from board number');
 
 }
 
